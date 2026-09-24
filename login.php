@@ -1,4 +1,9 @@
 ﻿<?php
+// 🔒 Inicia sessão somente se ainda não estiver ativa
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // CONEXÃO SEPARADA
 require_once __DIR__ . "/config/conexao.php";
 
@@ -28,6 +33,22 @@ if(isset($_POST['logar'])){
                 'nivel' => $nivel
             );
 
+            $stmt->close();
+
+            // 🔥 LOG DE LOGIN
+            $ip = $_SERVER['REMOTE_ADDR'];
+            $acao = "Login realizado";
+
+            $stmt_log = $conn->prepare(
+                "INSERT INTO logs (usuario_id, acao, ip) VALUES (?, ?, ?)"
+            );
+
+            if($stmt_log){
+                $stmt_log->bind_param("iss", $id, $acao, $ip);
+                $stmt_log->execute();
+                $stmt_log->close();
+            }
+
             echo "<script>location.href='index.php';</script>";
             exit;
 
@@ -54,8 +75,4 @@ Senha:<br>
 <input type="password" name="senha" required style="width:250px; padding:8px;"><br><br>
 
 <input type="submit" name="logar" value="Entrar">
-<p style="margin-top:15px;">
-    Não possui conta?
-    <a href="?area=registrar_usuario">Registrar usuário</a>
-</p>
 </form>

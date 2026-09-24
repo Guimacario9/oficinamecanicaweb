@@ -36,7 +36,9 @@ if($url == "logout"){
 <head>
 <meta charset="UTF-8">
 <title>OficinaSoft - Sistema de Oficina</title>
+<link rel="icon" href="images/mecanico.png" type="image/png">
 <link rel="stylesheet" href="css/style.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 
 <body>
@@ -63,6 +65,7 @@ if($url == "logout"){
   <li><a href="?area=os">Ordem de Serviço</a></li>
   
   <?php if($_SESSION['usuario_oficina']['nivel'] == 'admin'): ?>
+   <li><a href="?area=registrar_usuario">Registrar Usuário</a></li>
    <li><a href="?area=relatorio">Relatórios</a></li>
   <?php endif; ?>
 
@@ -113,6 +116,8 @@ switch($url){
     break;
 
     case 'registrar_usuario':
+	    proteger();
+        somenteAdmin();
         Include __DIR__ . "/registrar_usuario.php";
     break;
 
@@ -162,6 +167,7 @@ switch($url){
 <div class="right-panel">
 <div class="right-panel-in">
 
+<hr>
 <h3>Status do Sistema</h3>
 
 <?php if(isset($_SESSION['usuario_oficina'])): ?>
@@ -182,7 +188,7 @@ switch($url){
 </div>
 
 <div class="footer">
-<p>&copy; 2026 OficinaSoft</p>
+<p> Copyright &copy; <?php echo date('Y'); ?> - Todos os direitos reservados - OficinaSoft. </p>
 </div>
 
 </div>

@@ -1,53 +1,76 @@
 ﻿<h2 class="title">Ordem de Serviço</h2>
 
-<?php
-// CONEXÃO SEPARADA
-require_once __DIR__ . "/config/conexao.php";
+<style>
+.btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    background-color: #007BFF;
+    color: #fff !important;
+    transition: 0.3s;
+}
 
+.btn:hover {
+    background-color: #0056b3;
+}
+
+.botoes {
+    display: flex;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.box {
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+</style>
+
+<?php
 // =========================
 // CRIAR OS
 // =========================
 if(isset($_POST['salvar'])){
 
-    $veiculo_id = isset($_POST['veiculo_id']) ? intval($_POST['veiculo_id']) : 0;
-    $descricao  = isset($_POST['descricao']) ? trim($_POST['descricao']) : '';
-    $tipo       = isset($_POST['tipo_manutencao']) ? $_POST['tipo_manutencao'] : '';
-    $pecas      = isset($_POST['pecas']) ? $_POST['pecas'] : '';
-    $valor      = isset($_POST['valor']) ? str_replace(",", ".", $_POST['valor']) : 0;
-    $data_prev  = isset($_POST['data_prevista']) ? $_POST['data_prevista'] : null;
+    $veiculo_id = $_POST['veiculo_id'];
+    $descricao  = $_POST['descricao'];
+    $tipo       = $_POST['tipo_manutencao'];
+    $pecas      = $_POST['pecas'];
+    $valor      = str_replace(",", ".", $_POST['valor']);
+    $desconto   = str_replace(",", ".", $_POST['desconto']);
+    $obs        = $_POST['observacoes'];
+    $data_prev  = $_POST['data_prevista'];
 
-    if($veiculo_id > 0 && $descricao != '' && $valor > 0){
+    $stmt = $conn->prepare("
+        INSERT INTO ordem_servico 
+        (veiculo_id, descricao, tipo_manutencao, pecas_utilizadas, valor, desconto, observacoes, status, data_abertura, data_prevista)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'Aberta', NOW(), ?)
+    ");
 
-        $stmt = $conn->prepare("
-            INSERT INTO ordem_servico 
-            (veiculo_id, descricao, tipo_manutencao, pecas_utilizadas, valor, status, data_abertura, data_prevista)
-            VALUES (?, ?, ?, ?, ?, 'Aberta', NOW(), ?)
-        ");
+    $stmt->bind_param("isssddss",
+        $veiculo_id,
+        $descricao,
+        $tipo,
+        $pecas,
+        $valor,
+        $desconto,
+        $obs,
+        $data_prev
+    );
 
-        $stmt->bind_param("isssds",
-            $veiculo_id,
-            $descricao,
-            $tipo,
-            $pecas,
-            $valor,
-            $data_prev
-        );
+    $stmt->execute();
 
-        if($stmt->execute()){
-            echo "<p style='color:green;'>Ordem criada com sucesso!</p>";
-        } else {
-            echo "<p style='color:red;'>Erro ao criar ordem.</p>";
-        }
-
-        $stmt->close();
-
-    } else {
-        echo "<p style='color:red;'>Preencha os campos obrigatórios.</p>";
-    }
+    echo "<p style='color:green;'>Ordem criada com sucesso!</p>";
 }
 
 // =========================
-// BUSCAR VEÍCULOS
+// VEÍCULOS
 // =========================
 $veiculos = $conn->query("
     SELECT v.id, v.modelo, v.placa, c.nome 
@@ -85,90 +108,117 @@ Peças Utilizadas:<br>
 Valor:<br>
 <input type="text" name="valor" required><br><br>
 
-Data Prevista de Entrega:<br>
+Desconto:<br>
+<input type="text" name="desconto" value="0"><br><br>
+
+Observações:<br>
+<textarea name="observacoes"></textarea><br><br>
+
+Data Prevista:<br>
 <input type="date" name="data_prevista" required><br><br>
 
-<input type="submit" name="salvar" value="Criar OS">
+<input type="submit" name="salvar" value="Criar OS" class="btn">
 
 </form>
-
+<br />
 <hr>
 
 <h3>Ordens em Aberto</h3>
 
 <?php
+$abertas = $conn->query("
+SELECT os.*, v.modelo, v.placa
+FROM ordem_servico os
+JOIN veiculos v ON os.veiculo_id = v.id
+WHERE os.status='Aberta'
+");
 
-$sql_abertas = "
-    SELECT os.*, v.modelo, v.placa
-    FROM ordem_servico os
-    INNER JOIN veiculos v ON os.veiculo_id = v.id
-    WHERE os.status = 'Aberta'
-    ORDER BY os.id DESC
-";
+while($os = $abertas->fetch_assoc()):
 
-$result_abertas = $conn->query($sql_abertas);
-
-if($result_abertas && $result_abertas->num_rows > 0){
-
-    while($os = $result_abertas->fetch_assoc()){
-
-        echo "<div style='margin-bottom:10px; border-bottom:1px solid #ddd; padding:5px;'>";
-
-        echo "<strong>OS #".$os['id']."</strong> - ";
-        echo $os['modelo']." - ".$os['placa']."<br>";
-        echo "Valor: R$ ".number_format($os['valor'],2,',','.')."<br>";
-        echo "Status: ".$os['status']."<br>";
-
-        if(isset($os['data_prevista'])){
-            echo "Entrega prevista: ".date('d/m/Y', strtotime($os['data_prevista']))."<br>";
-        }
-
-        echo "</div>";
-    }
-
-}else{
-    echo "<p>Nenhuma ordem em aberto.</p>";
-}
+$total = $os['valor'] - $os['desconto'];
 ?>
+
+<div class="box">
+
+<strong>OS #<?php echo $os['id']; ?></strong> - 
+<?php echo $os['modelo']." - ".$os['placa']; ?><br>
+
+<strong>Descrição:</strong><br>
+<?php echo nl2br($os['descricao']); ?><br>
+
+<strong>Peças:</strong><br>
+<?php echo nl2br($os['pecas_utilizadas']); ?><br>
+
+<strong>Valor:</strong> R$ <?php echo number_format($os['valor'],2,',','.'); ?><br>
+<strong>Desconto:</strong> R$ <?php echo number_format($os['desconto'],2,',','.'); ?><br>
+<strong>Total:</strong> R$ <?php echo number_format($total,2,',','.'); ?><br>
+
+<strong>Entrega:</strong> <?php echo $os['data_prevista']; ?><br>
+
+<?php if(!empty($os['observacoes'])): ?>
+<strong>Observações:</strong><br>
+<?php echo nl2br($os['observacoes']); ?><br>
+<?php endif; ?>
+
+<div class="botoes">
+
+<a class="btn" href="?area=pagamento&pagar=<?php echo $os['id']; ?>">
+Pagar
+</a>
+
+<a class="btn" href="pdf_os.php?id=<?php echo $os['id']; ?>" target="_blank">
+Imprimir
+</a>
+
+</div>
+
+</div>
+
+<?php endwhile; ?>
 
 <hr>
-<h3>Ordens Finalizadas / Pagas</h3>
+
+<h3>Ordens Finalizadas</h3>
 
 <?php
+$finalizadas = $conn->query("
+SELECT os.*, v.modelo, v.placa
+FROM ordem_servico os
+JOIN veiculos v ON os.veiculo_id = v.id
+WHERE os.status='Finalizada'
+");
 
-$sql_finalizadas = "
-    SELECT os.*, v.modelo, v.placa, p.forma_pagamento, p.data_pagamento
-    FROM ordem_servico os
-    INNER JOIN veiculos v ON os.veiculo_id = v.id
-    LEFT JOIN pagamentos p ON os.id = p.ordem_id
-    WHERE os.status = 'Finalizada'
-    ORDER BY os.id DESC
-";
+while($os = $finalizadas->fetch_assoc()):
 
-$result_finalizadas = $conn->query($sql_finalizadas);
-
-if($result_finalizadas && $result_finalizadas->num_rows > 0){
-
-    while($os = $result_finalizadas->fetch_assoc()){
-
-        echo "<div style='margin-bottom:10px; border-bottom:1px solid #ddd; padding:5px;'>";
-
-        echo "<strong>OS #".$os['id']."</strong> - ";
-        echo $os['modelo']." - ".$os['placa']."<br>";
-        echo "Valor: R$ ".number_format($os['valor'],2,',','.')."<br>";
-
-        if(isset($os['data_pagamento']) && $os['data_pagamento'] != ''){
-            echo "Pago em: ".date('d/m/Y', strtotime($os['data_pagamento']))."<br>";
-        }
-
-        if(isset($os['forma_pagamento']) && $os['forma_pagamento'] != ''){
-            echo "Forma de Pagamento: ".$os['forma_pagamento']."<br>";
-        }
-
-        echo "</div>";
-    }
-
-}else{
-    echo "<p>Nenhuma ordem finalizada.</p>";
-}
+$total = $os['valor'] - $os['desconto'];
 ?>
+
+<div class="box">
+
+<strong>OS #<?php echo $os['id']; ?></strong> - 
+<?php echo $os['modelo']." - ".$os['placa']; ?><br>
+
+<strong>Descrição:</strong><br>
+<?php echo nl2br($os['descricao']); ?><br>
+
+<strong>Total Pago:</strong> R$ <?php echo number_format($total,2,',','.'); ?><br>
+
+<strong>Pago em:</strong> <?php echo $os['data_pagamento']; ?><br>
+<strong>Forma:</strong> <?php echo $os['forma_pagamento']; ?><br>
+
+<?php if(!empty($os['observacoes'])): ?>
+<strong>Observações:</strong><br>
+<?php echo nl2br($os['observacoes']); ?><br>
+<?php endif; ?>
+
+<div class="botoes">
+
+<a class="btn" href="pdf_os.php?id=<?php echo $os['id']; ?>" target="_blank">
+Imprimir
+</a>
+
+</div>
+
+</div>
+
+<?php endwhile; ?>

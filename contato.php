@@ -4,7 +4,7 @@
 
 <ul>
     <li><strong>📍 Endereço:</strong> Rua das Oficinas, 123 - Centro</li>
-    <li><strong>📞 Telefone:</strong> (11) 99999-9999</li>
+    <li><strong>📞 Telefone:</strong> (14) 99685-2568</li>
     <li><strong>✉️ E-mail:</strong> contato@oficinasoft.com</li>
     <li><strong>🕒 Horário:</strong> Segunda a Sexta - 08h às 18h</li>
 </ul>
